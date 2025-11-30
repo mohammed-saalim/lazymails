@@ -1,0 +1,13 @@
+[phases.setup]
+nixPkgs = ['...', 'dotnet-sdk']
+
+[phases.build]
+cmds = [
+  'cd backend/ColdEmailAPI',
+  'dotnet restore',
+  'dotnet publish -c Release -o /app/out'
+]
+
+[start]
+cmd = 'cd /app/out && dotnet ColdEmailAPI.dll'
+
