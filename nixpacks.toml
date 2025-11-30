@@ -1,8 +1,5 @@
-[variables]
-NIXPACKS_DOTNET_VERSION = "9.0"
-
 [phases.setup]
-nixPkgs = ['...', 'dotnet-sdk_9']
+nixPkgs = ['dotnet-sdk']
 
 [phases.build]
 cmds = [
