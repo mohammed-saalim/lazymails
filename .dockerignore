@@ -1,0 +1,15 @@
+**/.git
+**/.gitignore
+**/.vscode
+**/.vs
+**/bin
+**/obj
+**/.DS_Store
+**/node_modules
+**/*.md
+!README.md
+extension/
+dashboard/
+*.ps1
+*.sh
+
