@@ -1,0 +1,6 @@
+@ColdEmailAPI_HostAddress = http://localhost:5148
+
+GET {{ColdEmailAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

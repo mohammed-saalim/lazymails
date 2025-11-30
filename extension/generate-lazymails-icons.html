@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LazyMails Icon Generator v2</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #F1F5F9;
+      color: #0F172A;
+    }
+    h1 { color: #6366F1; margin-bottom: 8px; }
+    .subtitle { color: #64748B; margin-bottom: 30px; }
+    
+    .design-options {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 30px;
+      flex-wrap: wrap;
+    }
+    .design-option {
+      background: white;
+      padding: 16px 24px;
+      border-radius: 12px;
+      cursor: pointer;
+      border: 2px solid #E2E8F0;
+      transition: all 0.2s;
+    }
+    .design-option:hover { border-color: #A5B4FC; }
+    .design-option.active { 
+      border-color: #6366F1; 
+      background: #EEF2FF;
+    }
+    .design-option input { display: none; }
+    
+    .icon-grid {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+      margin: 30px 0;
+    }
+    .icon-item {
+      background: white;
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .icon-item canvas {
+      border-radius: 12px;
+      background: white;
+    }
+    .icon-item p {
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: #64748B;
+      font-weight: 500;
+    }
+    
+    .preview-large {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      text-align: center;
+      margin-bottom: 30px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .preview-large canvas {
+      border-radius: 24px;
+    }
+    .preview-large h3 {
+      margin: 20px 0 0;
+      color: #6366F1;
+    }
+    
+    button {
+      background: #6366F1;
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      margin: 5px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: #4F46E5;
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: #E2E8F0;
+      color: #475569;
+    }
+    .btn-secondary:hover {
+      background: #CBD5E1;
+    }
+    
+    .instructions {
+      background: white;
+      padding: 24px;
+      border-radius: 16px;
+      margin-top: 30px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .instructions h3 { color: #6366F1; margin-top: 0; }
+    .instructions ol { line-height: 2; color: #475569; }
+    code {
+      background: #F1F5F9;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌙 LazyMails Icon Generator</h1>
+  <p class="subtitle">Sleepy envelope under the night sky</p>
+  
+  <div class="design-options">
+    <label class="design-option active">
+      <input type="radio" name="design" value="sleepy" checked onchange="regenerate()">
+      😴 Sleepy Eyes + Zz
+    </label>
+    <label class="design-option">
+      <input type="radio" name="design" value="snoring" onchange="regenerate()">
+      💤 Big Snoring Zz
+    </label>
+    <label class="design-option">
+      <input type="radio" name="design" value="minimal" onchange="regenerate()">
+      ✉️ Minimal + Zz Badge
+    </label>
+  </div>
+  
+  <p style="margin-bottom: 12px; color: #64748B; font-size: 14px;">🌙 Background shade:</p>
+  <div class="design-options">
+    <label class="design-option active">
+      <input type="radio" name="bgColor" value="dark" checked onchange="regenerate()">
+      🌑 Midnight (#0F172A)
+    </label>
+    <label class="design-option">
+      <input type="radio" name="bgColor" value="lighter" onchange="regenerate()">
+      🌒 Slate (#1E293B)
+    </label>
+  </div>
+  
+  <div class="preview-large">
+    <canvas id="iconLarge" width="200" height="200"></canvas>
+    <h3>Preview</h3>
+  </div>
+  
+  <div class="icon-grid">
+    <div class="icon-item">
+      <canvas id="icon16" width="16" height="16"></canvas>
+      <p>16×16</p>
+    </div>
+    <div class="icon-item">
+      <canvas id="icon32" width="32" height="32"></canvas>
+      <p>32×32</p>
+    </div>
+    <div class="icon-item">
+      <canvas id="icon48" width="48" height="48"></canvas>
+      <p>48×48</p>
+    </div>
+    <div class="icon-item">
+      <canvas id="icon128" width="128" height="128"></canvas>
+      <p>128×128</p>
+    </div>
+  </div>
+  
+  <div style="text-align: center;">
+    <button onclick="downloadAll()">⬇️ Download All Icons</button>
+  </div>
+  
+  <div class="instructions">
+    <h3>📋 How to Use</h3>
+    <ol>
+      <li>Choose your favorite design style above</li>
+      <li>Click <strong>Download All Icons</strong></li>
+      <li>Move files to <code>extension/icons/</code> folder (replace existing)</li>
+      <li>Reload extension at <code>chrome://extensions/</code></li>
+    </ol>
+  </div>
+
+  <script>
+    const DARK_SLATE = '#0F172A';  // Midnight background
+    const SLATE_LIGHTER = '#1E293B';  // Slightly lighter option
+    const INDIGO = '#6366F1';
+    const INDIGO_LIGHT = '#A5B4FC';
+    const INDIGO_PALE = '#C7D2FE';
+    const WHITE = '#FFFFFF';
+    const CREAM = '#F8FAFC';
+    
+    function getDesign() {
+      return document.querySelector('input[name="design"]:checked').value;
+    }
+    
+    function getBgColor() {
+      const val = document.querySelector('input[name="bgColor"]:checked').value;
+      return val === 'lighter' ? SLATE_LIGHTER : DARK_SLATE;
+    }
+    
+    function drawIcon(canvas) {
+      const ctx = canvas.getContext('2d');
+      const size = canvas.width;
+      const scale = size / 128;
+      const design = getDesign();
+      const bgColor = getBgColor();
+      
+      ctx.clearRect(0, 0, size, size);
+      
+      // Background - rounded square (dark slate for nighttime feel)
+      ctx.fillStyle = bgColor;
+      roundRect(ctx, 0, 0, size, size, 24 * scale);
+      ctx.fill();
+      
+      if (design === 'sleepy') {
+        drawSleepyDesign(ctx, size, scale);
+      } else if (design === 'snoring') {
+        drawSnoringDesign(ctx, size, scale);
+      } else {
+        drawMinimalDesign(ctx, size, scale);
+      }
+    }
+    
+    function drawSleepyDesign(ctx, size, scale) {
+      // Envelope body - slightly tilted for personality
+      ctx.save();
+      ctx.translate(size/2, size/2);
+      ctx.rotate(-0.05);
+      ctx.translate(-size/2, -size/2);
+      
+      // Envelope shadow
+      ctx.fillStyle = '#1E293B';
+      roundRect(ctx, 18*scale, 42*scale, 92*scale, 58*scale, 8*scale);
+      ctx.fill();
+      
+      // Envelope body
+      ctx.fillStyle = WHITE;
+      roundRect(ctx, 16*scale, 38*scale, 92*scale, 58*scale, 8*scale);
+      ctx.fill();
+      
+      // Envelope flap
+      ctx.fillStyle = CREAM;
+      ctx.beginPath();
+      ctx.moveTo(16*scale, 44*scale);
+      ctx.lineTo(62*scale, 72*scale);
+      ctx.lineTo(108*scale, 44*scale);
+      ctx.lineTo(108*scale, 38*scale);
+      ctx.lineTo(16*scale, 38*scale);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Flap fold line
+      ctx.strokeStyle = INDIGO_LIGHT;
+      ctx.lineWidth = 2.5 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(22*scale, 44*scale);
+      ctx.lineTo(62*scale, 68*scale);
+      ctx.lineTo(102*scale, 44*scale);
+      ctx.stroke();
+      
+      // Sleepy eyes on envelope body (closed eyes = curved lines)
+      ctx.strokeStyle = INDIGO;
+      ctx.lineWidth = 3 * scale;
+      ctx.lineCap = 'round';
+      
+      // Left eye
+      ctx.beginPath();
+      ctx.arc(45*scale, 78*scale, 8*scale, 0.2*Math.PI, 0.8*Math.PI);
+      ctx.stroke();
+      
+      // Right eye  
+      ctx.beginPath();
+      ctx.arc(79*scale, 78*scale, 8*scale, 0.2*Math.PI, 0.8*Math.PI);
+      ctx.stroke();
+      
+      ctx.restore();
+      
+      // Zz coming out - larger and more prominent
+      ctx.fillStyle = WHITE;
+      ctx.font = `bold ${28*scale}px 'Segoe UI', Arial`;
+      ctx.textAlign = 'center';
+      
+      // Z characters with slight rotation for playfulness
+      ctx.save();
+      ctx.translate(98*scale, 28*scale);
+      ctx.rotate(0.15);
+      ctx.fillText('Z', 0, 0);
+      ctx.restore();
+      
+      ctx.font = `bold ${18*scale}px 'Segoe UI', Arial`;
+      ctx.save();
+      ctx.translate(110*scale, 14*scale);
+      ctx.rotate(0.2);
+      ctx.fillText('z', 0, 0);
+      ctx.restore();
+    }
+    
+    function drawSnoringDesign(ctx, size, scale) {
+      // Envelope body
+      ctx.fillStyle = WHITE;
+      roundRect(ctx, 12*scale, 44*scale, 80*scale, 52*scale, 8*scale);
+      ctx.fill();
+      
+      // Envelope flap
+      ctx.fillStyle = CREAM;
+      ctx.beginPath();
+      ctx.moveTo(12*scale, 50*scale);
+      ctx.lineTo(52*scale, 76*scale);
+      ctx.lineTo(92*scale, 50*scale);
+      ctx.lineTo(92*scale, 44*scale);
+      ctx.lineTo(12*scale, 44*scale);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Flap line
+      ctx.strokeStyle = INDIGO_LIGHT;
+      ctx.lineWidth = 2.5 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(18*scale, 50*scale);
+      ctx.lineTo(52*scale, 72*scale);
+      ctx.lineTo(86*scale, 50*scale);
+      ctx.stroke();
+      
+      // Big ZZZ coming out prominently
+      ctx.fillStyle = WHITE;
+      
+      // Large Z
+      ctx.font = `bold ${36*scale}px 'Segoe UI', Arial`;
+      ctx.save();
+      ctx.translate(88*scale, 50*scale);
+      ctx.rotate(-0.1);
+      ctx.fillText('Z', 0, 0);
+      ctx.restore();
+      
+      // Medium Z
+      ctx.font = `bold ${26*scale}px 'Segoe UI', Arial`;
+      ctx.save();
+      ctx.translate(106*scale, 28*scale);
+      ctx.rotate(0.1);
+      ctx.fillText('Z', 0, 0);
+      ctx.restore();
+      
+      // Small z
+      ctx.font = `bold ${18*scale}px 'Segoe UI', Arial`;
+      ctx.save();
+      ctx.translate(118*scale, 12*scale);
+      ctx.rotate(0.15);
+      ctx.fillText('z', 0, 0);
+      ctx.restore();
+    }
+    
+    function drawMinimalDesign(ctx, size, scale) {
+      // Centered envelope
+      const envW = 76 * scale;
+      const envH = 52 * scale;
+      const envX = (size - envW) / 2;
+      const envY = (size - envH) / 2 + 8*scale;
+      
+      // Envelope body
+      ctx.fillStyle = WHITE;
+      roundRect(ctx, envX, envY, envW, envH, 6*scale);
+      ctx.fill();
+      
+      // Envelope flap
+      ctx.fillStyle = CREAM;
+      ctx.beginPath();
+      ctx.moveTo(envX, envY + 6*scale);
+      ctx.lineTo(envX + envW/2, envY + envH/2);
+      ctx.lineTo(envX + envW, envY + 6*scale);
+      ctx.lineTo(envX + envW, envY);
+      ctx.lineTo(envX, envY);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Flap line
+      ctx.strokeStyle = INDIGO_LIGHT;
+      ctx.lineWidth = 2 * scale;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(envX + 4*scale, envY + 6*scale);
+      ctx.lineTo(envX + envW/2, envY + envH/2 - 4*scale);
+      ctx.lineTo(envX + envW - 4*scale, envY + 6*scale);
+      ctx.stroke();
+      
+      // Zz badge in top-right corner
+      ctx.fillStyle = WHITE;
+      ctx.beginPath();
+      ctx.arc(98*scale, 30*scale, 22*scale, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.fillStyle = INDIGO;
+      ctx.font = `bold ${20*scale}px 'Segoe UI', Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Zz', 98*scale, 30*scale);
+    }
+    
+    function roundRect(ctx, x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      ctx.lineTo(x + r, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+      ctx.lineTo(x, y + r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.closePath();
+    }
+    
+    function regenerate() {
+      // Update active state on all option groups
+      document.querySelectorAll('.design-option').forEach(opt => {
+        const input = opt.querySelector('input');
+        if (input && input.checked) {
+          opt.classList.add('active');
+        } else {
+          opt.classList.remove('active');
+        }
+      });
+      
+      // Redraw all icons
+      ['iconLarge', 'icon16', 'icon32', 'icon48', 'icon128'].forEach(id => {
+        drawIcon(document.getElementById(id));
+      });
+    }
+    
+    function download(canvasId, filename) {
+      const canvas = document.getElementById(canvasId);
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+    
+    function downloadAll() {
+      download('icon16', 'icon16.png');
+      setTimeout(() => download('icon32', 'icon32.png'), 100);
+      setTimeout(() => download('icon48', 'icon48.png'), 200);
+      setTimeout(() => download('icon128', 'icon128.png'), 300);
+    }
+    
+    // Generate all icons on load
+    window.onload = regenerate;
+  </script>
+</body>
+</html>
