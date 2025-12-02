@@ -86,6 +86,9 @@ app.UseCors("AllowExtension");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Add health check endpoint for Render
+app.MapGet("/", () => Results.Ok(new { status = "healthy", service = "LazyMails API" }));
+
 app.MapControllers();
 
 app.Run();
