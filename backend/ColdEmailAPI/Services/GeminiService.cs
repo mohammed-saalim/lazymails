@@ -11,7 +11,7 @@ public class GeminiService
 {
     private readonly IConfiguration _configuration;
     private readonly HttpClient _httpClient;
-    private const string GeminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+    private const string GeminiApiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent";
 
     public GeminiService(IConfiguration configuration, IHttpClientFactory httpClientFactory)
     {
