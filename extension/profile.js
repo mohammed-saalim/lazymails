@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_BASE_URL = 'http://localhost:5148/api';
+const API_BASE_URL = 'https://lazymails-1.onrender.com/api';
 
 // State
 let authToken = null;
@@ -30,10 +30,10 @@ function init() {
   linkedInUrlInput = document.getElementById('linkedInUrl');
   saveBtn = document.getElementById('saveBtn');
   errorMessage = document.getElementById('errorMessage');
-  
+
   // Event listeners
   profileForm.addEventListener('submit', handleSaveProfile);
-  
+
   // Check auth and load profile
   checkAuthAndLoad();
 }
@@ -76,24 +76,33 @@ async function loadProfile() {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
+
+    // Check for expired token
+    if (response.status === 401) {
+      console.log('Token expired during profile load');
+      window.location.href = 'dashboard.html';
+      return;
+    }
+
     if (!response.ok) {
-      if (response.status === 401) {
-        window.location.href = 'dashboard.html';
-        return;
-      }
       throw new Error('Failed to load profile');
     }
-    
-    const profile = await response.json();
-    
+
+    let profile;
+    try {
+      profile = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error in loadProfile:', parseError);
+      return; // Don't show error, just let user fill in the form
+    }
+
     // Populate form
     if (profile.fullName) fullNameInput.value = profile.fullName;
     if (profile.currentRole) currentRoleInput.value = profile.currentRole;
     if (profile.targetRoles) targetRolesInput.value = profile.targetRoles;
     if (profile.aboutMe) aboutMeInput.value = profile.aboutMe;
     if (profile.linkedInUrl) linkedInUrlInput.value = profile.linkedInUrl;
-    
+
   } catch (error) {
     console.error('Error loading profile:', error);
     // Don't show error, just let user fill in the form
@@ -105,16 +114,16 @@ async function loadProfile() {
  */
 async function handleSaveProfile(e) {
   e.preventDefault();
-  
+
   // Clear previous errors
   errorMessage.textContent = '';
   errorMessage.style.display = 'none';
-  
+
   // Validate required fields
   const fullName = fullNameInput.value.trim();
   const targetRoles = targetRolesInput.value.trim();
   const aboutMe = aboutMeInput.value.trim();
-  
+
   if (!fullName) {
     showError('Full name is required');
     return;
@@ -127,7 +136,7 @@ async function handleSaveProfile(e) {
     showError('About me is required');
     return;
   }
-  
+
   // Disable button
   saveBtn.disabled = true;
   saveBtn.innerHTML = `
@@ -136,7 +145,7 @@ async function handleSaveProfile(e) {
     </svg>
     Saving...
   `;
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/profile`, {
       method: 'POST',
@@ -152,24 +161,40 @@ async function handleSaveProfile(e) {
         linkedInUrl: linkedInUrlInput.value.trim() || null
       })
     });
-    
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.message || 'Failed to save profile');
+
+    // Check for expired token
+    if (response.status === 401) {
+      console.log('Token expired during profile save');
+      showError('Your session has expired. Please log in again.');
+      setTimeout(() => {
+        window.location.href = 'dashboard.html';
+      }, 2000);
+      return;
     }
-    
+
+    if (!response.ok) {
+      let errorMessage = 'Failed to save profile';
+      try {
+        const data = await response.json();
+        errorMessage = data.message || errorMessage;
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+      }
+      throw new Error(errorMessage);
+    }
+
     // Show success toast
     showToast('Profile saved successfully!');
-    
+
     // Redirect to dashboard after short delay
     setTimeout(() => {
       window.location.href = 'dashboard.html';
     }, 1500);
-    
+
   } catch (error) {
     console.error('Error saving profile:', error);
     showError(error.message || 'Failed to save profile');
-    
+
     // Re-enable button
     saveBtn.disabled = false;
     saveBtn.innerHTML = `
@@ -195,18 +220,18 @@ function showError(message) {
 function showToast(message, type = 'success') {
   // Remove existing toasts
   document.querySelectorAll('.toast-notification').forEach(t => t.remove());
-  
+
   const toast = document.createElement('div');
   toast.className = `toast-notification ${type}`;
   toast.textContent = message;
-  
+
   document.body.appendChild(toast);
-  
+
   // Animate in
   requestAnimationFrame(() => {
     toast.classList.add('show');
   });
-  
+
   // Remove after 3 seconds
   setTimeout(() => {
     toast.classList.remove('show');

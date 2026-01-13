@@ -63,3 +63,8 @@ Desktop.ini
 # Local documentation (keep only README.md in repo)
 *.md
 !README.md
+
+# Screenshots and packaging scripts
+screenshots/
+resize-screenshots.ps1
+*.zip

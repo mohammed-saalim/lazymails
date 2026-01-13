@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_BASE_URL = 'http://localhost:5148/api';
+const API_BASE_URL = 'https://lazymails-1.onrender.com/api';
 
 // State
 let authToken = null;
@@ -39,22 +39,22 @@ function init() {
   authSection = document.getElementById('authSection');
   mainContent = document.getElementById('mainContent');
   loginForm = document.getElementById('loginForm');
-  
+
   loginEmail = document.getElementById('loginEmail');
   loginPassword = document.getElementById('loginPassword');
   authError = document.getElementById('authError');
-  
+
   logoutBtn = document.getElementById('logoutBtn');
   profileBtn = document.getElementById('profileBtn');
   userEmailDisplay = document.getElementById('userEmail');
   profileBanner = document.getElementById('profileBanner');
   headerActions = document.querySelector('.header-actions');
-  
+
   loadingIndicator = document.getElementById('loadingIndicator');
   emptyState = document.getElementById('emptyState');
   emailHistory = document.getElementById('emailHistory');
   emailTableBody = document.getElementById('emailTableBody');
-  
+
   emailModal = document.getElementById('emailModal');
   closeModal = document.getElementById('closeModal');
   modalProfileData = document.getElementById('modalProfileData');
@@ -64,27 +64,27 @@ function init() {
   modalUpdatedAt = document.getElementById('modalUpdatedAt');
   copyEmailBtn = document.getElementById('copyEmailBtn');
   deleteEmailBtn = document.getElementById('deleteEmailBtn');
-  
+
   // Edit elements
   editEmailToggle = document.getElementById('editEmailToggle');
   editEmailActions = document.getElementById('editEmailActions');
   saveEmailBtn = document.getElementById('saveEmailBtn');
   cancelEmailBtn = document.getElementById('cancelEmailBtn');
-  
+
   filterTabs = document.querySelectorAll('.filter-tab');
-  
+
   totalEmailsEl = document.getElementById('totalEmails');
   workedCountEl = document.getElementById('workedCount');
   didntWorkCountEl = document.getElementById('didntWorkCount');
   unknownCountEl = document.getElementById('unknownCount');
-  
+
   // Event listeners
   loginForm.addEventListener('submit', handleLogin);
   logoutBtn.addEventListener('click', handleLogout);
   closeModal.addEventListener('click', closeEmailModal);
   copyEmailBtn.addEventListener('click', copyEmailToClipboard);
   deleteEmailBtn.addEventListener('click', deleteEmail);
-  
+
   // Edit email listeners
   if (editEmailToggle) {
     editEmailToggle.addEventListener('click', toggleEmailEdit);
@@ -95,32 +95,32 @@ function init() {
   if (cancelEmailBtn) {
     cancelEmailBtn.addEventListener('click', cancelEmailEdit);
   }
-  
+
   filterTabs.forEach(tab => {
     tab.addEventListener('click', () => handleFilterChange(tab.dataset.status));
   });
-  
+
   // Status buttons in modal
   document.querySelectorAll('.status-btn').forEach(btn => {
     btn.addEventListener('click', () => updateEmailStatus(btn.dataset.status));
   });
-  
+
   // Close modal when clicking backdrop
   const modalBackdrop = document.querySelector('.modal-backdrop');
   if (modalBackdrop) {
     modalBackdrop.addEventListener('click', closeEmailModal);
   }
-  
+
   // Close modal on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && emailModal.classList.contains('active')) {
       closeEmailModal();
     }
   });
-  
+
   // Initialize icons
   refreshIcons();
-  
+
   // Check if running in extension context
   if (typeof chrome !== 'undefined' && chrome.storage) {
     checkExtensionAuth();
@@ -155,7 +155,7 @@ async function checkExtensionAuth() {
 function checkLocalStorageAuth() {
   authToken = localStorage.getItem('auth_token');
   userEmail = localStorage.getItem('user_email');
-  
+
   if (authToken) {
     showMainContent();
     loadEmailHistory();
@@ -182,7 +182,7 @@ function showMainContent() {
   mainContent.style.display = 'block';
   updateHeaderVisibility();
   refreshIcons();
-  
+
   // Check if user profile is complete
   checkUserProfile();
 }
@@ -197,11 +197,24 @@ async function checkUserProfile() {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
+
+    // Check for expired token
+    if (response.status === 401) {
+      console.log('Token expired during profile check');
+      await handleLogout();
+      return;
+    }
+
     if (response.ok) {
-      const profile = await response.json();
+      let profile;
+      try {
+        profile = await response.json();
+      } catch (parseError) {
+        console.error('JSON parse error in checkUserProfile:', parseError);
+        return;
+      }
       userProfileComplete = profile.isComplete;
-      
+
       if (profileBanner) {
         profileBanner.style.display = profile.isComplete ? 'none' : 'flex';
       }
@@ -242,28 +255,35 @@ function updateHeaderVisibility() {
  */
 async function handleLogin(e) {
   e.preventDefault();
-  
+
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
-  
+
   if (!email || !password) {
     showAuthError('Please enter email and password');
     return;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    
-    const data = await response.json();
-    
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error during login:', parseError);
+      showAuthError('Server error. Please try again later.');
+      return;
+    }
+
     if (response.ok) {
       authToken = data.token;
       userEmail = data.email;
-      
+
       if (typeof chrome !== 'undefined' && chrome.storage) {
         await chrome.storage.local.set({
           auth_token: authToken,
@@ -275,7 +295,7 @@ async function handleLogin(e) {
         localStorage.setItem('user_email', userEmail);
         localStorage.setItem('user_id', data.userId);
       }
-      
+
       showMainContent();
       loadEmailHistory();
     } else {
@@ -298,7 +318,7 @@ async function handleLogout() {
     localStorage.removeItem('user_email');
     localStorage.removeItem('user_id');
   }
-  
+
   // Clear all state
   authToken = null;
   userEmail = null;
@@ -306,12 +326,12 @@ async function handleLogout() {
   currentEmailId = null;
   currentEmail = null;
   userEmailDisplay.textContent = '';
-  
+
   // Clear the user email display in header
   if (userEmailDisplay) {
     userEmailDisplay.textContent = '';
   }
-  
+
   showAuthSection();
 }
 
@@ -323,27 +343,53 @@ async function loadEmailHistory() {
     loadingIndicator.style.display = 'block';
     emailHistory.style.display = 'none';
     emptyState.style.display = 'none';
-    
-    const url = currentFilter === 'all' 
-      ? `${API_BASE_URL}/history`
-      : `${API_BASE_URL}/history?status=${currentFilter}`;
-    
-    const response = await fetch(url, {
+
+    // Always fetch ALL emails for accurate stats
+    const allResponse = await fetch(`${API_BASE_URL}/history`, {
       headers: {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
-    if (!response.ok) {
+
+    // Check for expired token
+    if (allResponse.status === 401) {
+      console.log('Token expired during history load');
+      await handleLogout();
+      return;
+    }
+
+    if (!allResponse.ok) {
       throw new Error('Failed to load email history');
     }
-    
-    const data = await response.json();
-    allEmails = data;
-    
-    updateStats(data);
-    displayEmailHistory(data);
-    
+
+    let allData;
+    try {
+      allData = await allResponse.json();
+    } catch (parseError) {
+      console.error('JSON parse error in loadEmailHistory:', parseError);
+      throw new Error('Failed to parse email history');
+    }
+
+    allEmails = allData;
+
+    // Update stats with ALL emails
+    updateStats(allData);
+
+    // Filter emails for display based on current filter
+    let displayData = allData;
+    if (currentFilter !== 'all') {
+      const statusMap = {
+        'unknown': { num: 0, str: 'Unknown' },
+        'worked': { num: 1, str: 'Worked' },
+        'didnt-work': { num: 2, str: 'DidntWork' }
+      };
+      const target = statusMap[currentFilter];
+      // Handle both numeric and string enum values
+      displayData = allData.filter(e => e.workedStatus === target.num || e.workedStatus === target.str);
+    }
+
+    displayEmailHistory(displayData);
+
   } catch (error) {
     console.error('Error loading email history:', error);
     showError('Failed to load email history');
@@ -357,9 +403,10 @@ async function loadEmailHistory() {
  */
 function updateStats(emails) {
   totalEmailsEl.textContent = emails.length;
-  workedCountEl.textContent = emails.filter(e => e.workedStatus === 1).length;
-  didntWorkCountEl.textContent = emails.filter(e => e.workedStatus === 2).length;
-  unknownCountEl.textContent = emails.filter(e => e.workedStatus === 0).length;
+  // Handle both numeric (0,1,2) and string ("Unknown","Worked","DidntWork") enum values
+  workedCountEl.textContent = emails.filter(e => e.workedStatus === 1 || e.workedStatus === "Worked").length;
+  didntWorkCountEl.textContent = emails.filter(e => e.workedStatus === 2 || e.workedStatus === "DidntWork").length;
+  unknownCountEl.textContent = emails.filter(e => e.workedStatus === 0 || e.workedStatus === "Unknown").length;
 }
 
 /**
@@ -372,17 +419,17 @@ function displayEmailHistory(emails) {
     refreshIcons();
     return;
   }
-  
+
   emptyState.style.display = 'none';
   emailHistory.style.display = 'block';
-  
+
   emailTableBody.innerHTML = '';
-  
+
   emails.forEach(email => {
     const row = createEmailRow(email);
     emailTableBody.appendChild(row);
   });
-  
+
   // Refresh icons after adding new elements
   refreshIcons();
 }
@@ -392,16 +439,16 @@ function displayEmailHistory(emails) {
  */
 function extractNameFromProfile(profileData) {
   if (!profileData) return '—';
-  
+
   const lines = profileData.split('\n').filter(l => l.trim());
-  
+
   // Check first few lines for a name-like string
   for (let i = 0; i < Math.min(5, lines.length); i++) {
     const line = lines[i].trim();
     // Skip lines that look like badges or metadata
     if (line.includes('badge') || line.includes('degree') || line.length > 50) continue;
     if (line.includes('has a') || line.includes('account')) continue;
-    
+
     // Check if line looks like a name (2-4 capitalized words)
     const words = line.split(/\s+/);
     if (words.length >= 2 && words.length <= 4) {
@@ -411,7 +458,7 @@ function extractNameFromProfile(profileData) {
       }
     }
   }
-  
+
   return '—';
 }
 
@@ -420,12 +467,12 @@ function extractNameFromProfile(profileData) {
  */
 function extractCompanyFromProfile(profileData) {
   if (!profileData) return '—';
-  
+
   const patterns = [
     /(?:@|at)\s+([A-Za-z0-9][A-Za-z0-9\s&.,'-]+?)(?:\s*[|\n]|$)/i,
     /(?:Software Engineer|Developer|Manager|Director|Engineer|Analyst|Designer|Consultant|Full Stack)\s+(?:@|at)\s+([A-Za-z0-9][A-Za-z0-9\s&.,'-]+?)(?:\s*[|\n]|$)/i,
   ];
-  
+
   for (const pattern of patterns) {
     const match = profileData.match(pattern);
     if (match && match[1]) {
@@ -436,7 +483,7 @@ function extractCompanyFromProfile(profileData) {
       return company;
     }
   }
-  
+
   return '—';
 }
 
@@ -446,7 +493,7 @@ function extractCompanyFromProfile(profileData) {
 function createEmailRow(email) {
   const row = document.createElement('tr');
   row.dataset.id = email.id;
-  
+
   const date = new Date(email.createdAt).toLocaleDateString();
   const name = extractNameFromProfile(email.linkedInProfileData);
   const company = extractCompanyFromProfile(email.linkedInProfileData);
@@ -454,7 +501,7 @@ function createEmailRow(email) {
   const statusText = getStatusText(email.workedStatus);
   const statusClass = getStatusClass(email.workedStatus);
   const statusIcon = getStatusIcon(email.workedStatus);
-  
+
   row.innerHTML = `
     <td>${date}</td>
     <td><span class="cell-name">${escapeHtml(name)}</span></td>
@@ -500,7 +547,7 @@ function createEmailRow(email) {
       </div>
     </td>
   `;
-  
+
   // Add event listeners
   row.querySelector('.action-btn.view').addEventListener('click', () => showEmailDetail(email.id));
   row.querySelector('.action-btn.copy').addEventListener('click', (e) => {
@@ -511,7 +558,7 @@ function createEmailRow(email) {
     e.stopPropagation();
     deleteEmailDirect(email.id);
   });
-  
+
   // Company edit button
   const editCompanyBtn = row.querySelector('.edit-cell-btn[data-field="company"]');
   if (editCompanyBtn) {
@@ -520,7 +567,7 @@ function createEmailRow(email) {
       startInlineEdit(row, 'company', company, email.id);
     });
   }
-  
+
   return row;
 }
 
@@ -528,7 +575,8 @@ function createEmailRow(email) {
  * Get SVG path for status icon
  */
 function getStatusSvgPath(status) {
-  switch(status) {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
     case 1: // Worked - check circle
       return '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/>';
     case 2: // Didn't work - x circle
@@ -544,20 +592,20 @@ function getStatusSvgPath(status) {
 function startInlineEdit(row, field, currentValue, emailId) {
   const cellSpan = row.querySelector(`.cell-${field}`);
   const editBtn = row.querySelector(`.edit-cell-btn[data-field="${field}"]`);
-  
+
   // Create input
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'cell-edit-input';
   input.value = currentValue === '—' ? '' : currentValue;
-  
+
   // Hide span and button, show input
   cellSpan.style.display = 'none';
   editBtn.style.display = 'none';
   cellSpan.parentNode.insertBefore(input, cellSpan);
   input.focus();
   input.select();
-  
+
   // Handle save on Enter or blur
   const saveEdit = async () => {
     const newValue = input.value.trim() || '—';
@@ -565,11 +613,11 @@ function startInlineEdit(row, field, currentValue, emailId) {
     cellSpan.style.display = '';
     editBtn.style.display = '';
     cellSpan.textContent = newValue;
-    
+
     // Save to local state (we don't have a backend endpoint for this, so it's UI only)
     showToast('Company updated');
   };
-  
+
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       saveEdit();
@@ -579,7 +627,7 @@ function startInlineEdit(row, field, currentValue, emailId) {
       editBtn.style.display = '';
     }
   });
-  
+
   input.addEventListener('blur', saveEdit);
 }
 
@@ -597,7 +645,8 @@ function escapeHtml(text) {
  * Get status icon name
  */
 function getStatusIcon(status) {
-  switch(status) {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
     case 0: return 'help-circle';
     case 1: return 'check-circle';
     case 2: return 'x-circle';
@@ -624,7 +673,7 @@ async function copyToClipboard(text) {
 function showToast(message, type = 'success') {
   // Remove existing toasts
   document.querySelectorAll('.toast-notification').forEach(t => t.remove());
-  
+
   const toast = document.createElement('div');
   toast.className = 'toast-notification';
   toast.style.cssText = `
@@ -644,15 +693,15 @@ function showToast(message, type = 'success') {
     transition: all 0.3s ease;
   `;
   toast.textContent = message;
-  
+
   document.body.appendChild(toast);
-  
+
   // Animate in
   requestAnimationFrame(() => {
     toast.style.transform = 'translateY(0)';
     toast.style.opacity = '1';
   });
-  
+
   // Remove after 3 seconds
   setTimeout(() => {
     toast.style.transform = 'translateY(20px)';
@@ -668,7 +717,7 @@ async function deleteEmailDirect(emailId) {
   if (!confirm('Are you sure you want to delete this email?')) {
     return;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/history/${emailId}`, {
       method: 'DELETE',
@@ -676,14 +725,14 @@ async function deleteEmailDirect(emailId) {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to delete email');
     }
-    
+
     showToast('Email deleted');
     loadEmailHistory();
-    
+
   } catch (error) {
     console.error('Error deleting email:', error);
     showToast('Failed to delete', 'error');
@@ -696,34 +745,49 @@ async function deleteEmailDirect(emailId) {
 async function showEmailDetail(emailId) {
   currentEmailId = emailId;
   isEditingEmail = false;
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/history/${emailId}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
+
+    // Check for expired token
+    if (response.status === 401) {
+      console.log('Token expired during email detail load');
+      await handleLogout();
+      return;
+    }
+
     if (!response.ok) {
       throw new Error('Failed to load email details');
     }
-    
-    currentEmail = await response.json();
-    
+
+    let currentEmailData;
+    try {
+      currentEmailData = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error in showEmailDetail:', parseError);
+      throw new Error('Failed to parse email details');
+    }
+
+    currentEmail = currentEmailData;
+
     modalProfileData.textContent = currentEmail.linkedInProfileData;
     modalEmail.textContent = currentEmail.generatedEmail;
     modalEmailEdit.value = currentEmail.generatedEmail;
     modalCreatedAt.textContent = new Date(currentEmail.createdAt).toLocaleString();
     modalUpdatedAt.textContent = new Date(currentEmail.updatedAt).toLocaleString();
-    
+
     // Reset edit state
     modalEmail.style.display = 'block';
     modalEmailEdit.style.display = 'none';
     editEmailActions.style.display = 'none';
-    
+
     emailModal.classList.add('active');
     refreshIcons();
-    
+
   } catch (error) {
     console.error('Error loading email details:', error);
     showToast('Failed to load email details', 'error');
@@ -735,7 +799,7 @@ async function showEmailDetail(emailId) {
  */
 function toggleEmailEdit() {
   isEditingEmail = !isEditingEmail;
-  
+
   if (isEditingEmail) {
     modalEmail.style.display = 'none';
     modalEmailEdit.style.display = 'block';
@@ -753,12 +817,12 @@ function toggleEmailEdit() {
  */
 async function saveEmailEdit() {
   const newEmailText = modalEmailEdit.value.trim();
-  
+
   if (!newEmailText) {
     showToast('Email cannot be empty', 'error');
     return;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/history/${currentEmailId}`, {
       method: 'PUT',
@@ -770,24 +834,24 @@ async function saveEmailEdit() {
         generatedEmail: newEmailText
       })
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to save email');
     }
-    
+
     // Update display
     modalEmail.textContent = newEmailText;
     currentEmail.generatedEmail = newEmailText;
-    
+
     // Exit edit mode
     isEditingEmail = false;
     modalEmail.style.display = 'block';
     modalEmailEdit.style.display = 'none';
     editEmailActions.style.display = 'none';
-    
+
     showToast('Email saved successfully');
     loadEmailHistory(); // Refresh the table
-    
+
   } catch (error) {
     console.error('Error saving email:', error);
     showToast('Failed to save email', 'error');
@@ -820,7 +884,7 @@ function closeEmailModal() {
  */
 async function updateEmailStatus(status) {
   if (!currentEmailId) return;
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/history/${currentEmailId}/status`, {
       method: 'PATCH',
@@ -830,15 +894,23 @@ async function updateEmailStatus(status) {
       },
       body: JSON.stringify({ workedStatus: parseInt(status) })
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to update status');
     }
-    
+
+    // Update local email data immediately
+    const emailIndex = allEmails.findIndex(e => e.id === currentEmailId);
+    if (emailIndex !== -1) {
+      allEmails[emailIndex].workedStatus = parseInt(status);
+      // Update stats immediately
+      updateStats(allEmails);
+    }
+
     showToast('Status updated');
     closeEmailModal();
     loadEmailHistory();
-    
+
   } catch (error) {
     console.error('Error updating status:', error);
     showToast('Failed to update status', 'error');
@@ -858,11 +930,11 @@ async function copyEmailToClipboard() {
  */
 async function deleteEmail() {
   if (!currentEmailId) return;
-  
+
   if (!confirm('Are you sure you want to delete this email?')) {
     return;
   }
-  
+
   try {
     const response = await fetch(`${API_BASE_URL}/history/${currentEmailId}`, {
       method: 'DELETE',
@@ -870,15 +942,15 @@ async function deleteEmail() {
         'Authorization': `Bearer ${authToken}`
       }
     });
-    
+
     if (!response.ok) {
       throw new Error('Failed to delete email');
     }
-    
+
     showToast('Email deleted');
     closeEmailModal();
     loadEmailHistory();
-    
+
   } catch (error) {
     console.error('Error deleting email:', error);
     showToast('Failed to delete', 'error');
@@ -890,22 +962,37 @@ async function deleteEmail() {
  */
 function handleFilterChange(status) {
   currentFilter = status;
-  
+
   filterTabs.forEach(tab => {
     tab.classList.remove('active');
     if (tab.dataset.status === status) {
       tab.classList.add('active');
     }
   });
-  
+
   loadEmailHistory();
+}
+
+/**
+ * Normalize status to numeric value (handle both string and numeric enums)
+ */
+function normalizeStatus(status) {
+  if (typeof status === 'number') return status;
+  // Handle string enum values
+  const statusMap = {
+    'Unknown': 0,
+    'Worked': 1,
+    'DidntWork': 2
+  };
+  return statusMap[status] !== undefined ? statusMap[status] : 0;
 }
 
 /**
  * Get status text
  */
 function getStatusText(status) {
-  switch(status) {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
     case 0: return 'Unknown';
     case 1: return 'Worked';
     case 2: return "Didn't Work";
@@ -917,7 +1004,8 @@ function getStatusText(status) {
  * Get status CSS class
  */
 function getStatusClass(status) {
-  switch(status) {
+  const normalized = normalizeStatus(status);
+  switch (normalized) {
     case 0: return 'status-unknown';
     case 1: return 'status-worked';
     case 2: return 'status-didnt-work';

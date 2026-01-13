@@ -119,18 +119,22 @@ lazymails/
 
 ## Deployment
 
-### Backend Deployment (Railway)
+### Backend Deployment (Render)
 
 1. Push code to GitHub
-2. Create a new project on Railway
+2. Create a new Web Service on Render.com
 3. Connect your GitHub repository
-4. Set environment variables:
-   - `ConnectionStrings__DefaultConnection`
+4. Configure:
+   - Root Directory: `backend/ColdEmailAPI`
+   - Runtime: `Docker`
+5. Add PostgreSQL database on Render
+6. Set environment variables:
+   - `ConnectionStrings__DefaultConnection` (use Render's PostgreSQL connection string)
    - `GeminiApi__ApiKey`
    - `Jwt__Key`
    - `Jwt__Issuer`
    - `Jwt__Audience`
-5. Deploy
+7. Deploy
 
 ### Extension Publication
 

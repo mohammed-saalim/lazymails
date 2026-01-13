@@ -4,7 +4,7 @@
  */
 
 // Configuration
-const API_BASE_URL = 'http://localhost:5148/api';
+const API_BASE_URL = 'https://lazymails-1.onrender.com/api';
 
 // State
 let authToken = null;

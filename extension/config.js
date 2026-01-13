@@ -2,11 +2,11 @@
  * Configuration for the Cold Email Generator extension
  */
 const CONFIG = {
-  // API base URL - update this when deploying to production
-  API_BASE_URL: 'http://localhost:5148/api',
+  // API base URL - Production (Render)
+  API_BASE_URL: 'https://lazymails-1.onrender.com/api',
   
-  // Alternate URL for HTTPS (if configured)
-  // API_BASE_URL: 'https://localhost:7000/api',
+  // For local development, use:
+  // API_BASE_URL: 'http://localhost:5148/api',
   
   // Storage keys
   STORAGE_KEYS: {

@@ -18,10 +18,10 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# Expose port (Railway will set PORT env variable)
+# Expose port
 EXPOSE 8080
 
-# Set ASP.NET Core to listen on Railway's PORT
+# Set ASP.NET Core to listen on port 8080
 ENV ASPNETCORE_URLS=http://+:8080
 
 ENTRYPOINT ["dotnet", "ColdEmailAPI.dll"]

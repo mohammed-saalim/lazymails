@@ -39,66 +39,66 @@ async function init() {
   mainSection = document.getElementById('mainSection');
   loginForm = document.getElementById('loginForm');
   registerForm = document.getElementById('registerForm');
-  
+
   loginTab = document.getElementById('loginTab');
   registerTab = document.getElementById('registerTab');
-  
+
   loginEmail = document.getElementById('loginEmail');
   loginPassword = document.getElementById('loginPassword');
   loginButton = document.getElementById('loginButton');
-  
+
   registerEmail = document.getElementById('registerEmail');
   registerPassword = document.getElementById('registerPassword');
   registerButton = document.getElementById('registerButton');
-  
+
   logoutButton = document.getElementById('logoutButton');
   generateButton = document.getElementById('generateButton');
   copyButton = document.getElementById('copyButton');
   newEmailButton = document.getElementById('newEmailButton');
-  
+
   statusMessage = document.getElementById('statusMessage');
   errorMessage = document.getElementById('errorMessage');
   authError = document.getElementById('authError');
-  
+
   emailDisplay = document.getElementById('emailDisplay');
   emailContent = document.getElementById('emailContent');
   hintMessage = document.getElementById('hintMessage');
-  
+
   userEmailDisplay = document.getElementById('userEmail');
   dashboardLink = document.getElementById('dashboardLink');
   userActions = document.getElementById('userActions');
-  
+
   // Email type elements
   emailTypeSelect = document.getElementById('emailTypeSelect');
   customPromptContainer = document.getElementById('customPromptContainer');
   customPromptTextarea = document.getElementById('customPromptTextarea');
-  
+
   // Add event listeners
   loginTab.addEventListener('click', showLoginForm);
   registerTab.addEventListener('click', showRegisterForm);
-  
+
   loginButton.addEventListener('click', handleLogin);
   registerButton.addEventListener('click', handleRegister);
   logoutButton.addEventListener('click', handleLogout);
-  
+
   generateButton.addEventListener('click', handleGenerateEmail);
   copyButton.addEventListener('click', handleCopyEmail);
   newEmailButton.addEventListener('click', resetEmailDisplay);
-  
+
   dashboardLink.addEventListener('click', openDashboard);
-  
+
   // Email type change handler
   emailTypeSelect.addEventListener('change', handleEmailTypeChange);
-  
+
   // Allow Enter key to submit forms
   loginPassword.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleLogin();
   });
-  
+
   registerPassword.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') handleRegister();
   });
-  
+
   // Check authentication status
   await checkAuthStatus();
 }
@@ -109,7 +109,7 @@ async function init() {
 async function checkAuthStatus() {
   try {
     const result = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN, CONFIG.STORAGE_KEYS.USER_EMAIL]);
-    
+
     if (result[CONFIG.STORAGE_KEYS.TOKEN]) {
       showMainSection(result[CONFIG.STORAGE_KEYS.USER_EMAIL]);
     } else {
@@ -170,24 +170,31 @@ function showRegisterForm() {
 async function handleLogin() {
   const email = loginEmail.value.trim();
   const password = loginPassword.value;
-  
+
   if (!email || !password) {
     showAuthError('Please enter email and password');
     return;
   }
-  
+
   loginButton.disabled = true;
   loginButton.textContent = 'Logging in...';
-  
+
   try {
     const response = await fetch(`${CONFIG.API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    
-    const data = await response.json();
-    
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error during login:', parseError);
+      showAuthError('Server error. Please try again later.');
+      return;
+    }
+
     if (response.ok) {
       // Store auth data
       await chrome.storage.local.set({
@@ -195,7 +202,7 @@ async function handleLogin() {
         [CONFIG.STORAGE_KEYS.USER_EMAIL]: data.email,
         [CONFIG.STORAGE_KEYS.USER_ID]: data.userId
       });
-      
+
       showMainSection(data.email);
       loginEmail.value = '';
       loginPassword.value = '';
@@ -217,29 +224,36 @@ async function handleLogin() {
 async function handleRegister() {
   const email = registerEmail.value.trim();
   const password = registerPassword.value;
-  
+
   if (!email || !password) {
     showAuthError('Please enter email and password');
     return;
   }
-  
+
   if (password.length < 6) {
     showAuthError('Password must be at least 6 characters');
     return;
   }
-  
+
   registerButton.disabled = true;
   registerButton.textContent = 'Registering...';
-  
+
   try {
     const response = await fetch(`${CONFIG.API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
     });
-    
-    const data = await response.json();
-    
+
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('JSON parse error during registration:', parseError);
+      showAuthError('Server error. Please try again later.');
+      return;
+    }
+
     if (response.ok) {
       // Store auth data
       await chrome.storage.local.set({
@@ -247,7 +261,7 @@ async function handleRegister() {
         [CONFIG.STORAGE_KEYS.USER_EMAIL]: data.email,
         [CONFIG.STORAGE_KEYS.USER_ID]: data.userId
       });
-      
+
       showMainSection(data.email);
       registerEmail.value = '';
       registerPassword.value = '';
@@ -268,7 +282,7 @@ async function handleRegister() {
  */
 function handleEmailTypeChange() {
   const selectedType = emailTypeSelect.value;
-  
+
   if (selectedType === 'Custom') {
     customPromptContainer.style.display = 'block';
   } else {
@@ -283,19 +297,19 @@ function handleEmailTypeChange() {
 function startLoadingAnimation() {
   let zzzState = 0;
   const zzzTexts = ['Z', 'Zz', 'Zzz'];
-  
+
   // Set random loading message in the hint area (pick once and keep it)
   if (hintMessage) {
     const randomMessage = loadingMessages[Math.floor(Math.random() * loadingMessages.length)];
     hintMessage.textContent = randomMessage;
     hintMessage.classList.add('loading-message');
   }
-  
+
   // Disable button and show initial state
   generateButton.disabled = true;
   generateButton.classList.add('loading');
   generateButton.textContent = 'Z';
-  
+
   // Start animation cycle for button text only
   zzzAnimationInterval = setInterval(() => {
     zzzState = (zzzState + 1) % zzzTexts.length;
@@ -312,12 +326,12 @@ function stopLoadingAnimation() {
     clearInterval(zzzAnimationInterval);
     zzzAnimationInterval = null;
   }
-  
+
   // Reset button
   generateButton.disabled = false;
   generateButton.classList.remove('loading');
   generateButton.textContent = 'Generate Cold Email';
-  
+
   // Reset hint message styling
   if (hintMessage) {
     hintMessage.textContent = 'Make sure you\'re on a LinkedIn profile page';
@@ -337,10 +351,10 @@ async function handleLogout() {
     CONFIG.STORAGE_KEYS.USER_EMAIL,
     CONFIG.STORAGE_KEYS.USER_ID
   ]);
-  
+
   // Clear user email display
   if (userEmailDisplay) userEmailDisplay.textContent = '';
-  
+
   resetEmailDisplay();
   showAuthSection();
 }
@@ -350,73 +364,73 @@ async function handleLogout() {
  */
 async function handleGenerateEmail() {
   hideMessages();
-  
+
   try {
     // Get selected email type and custom prompt
     const emailType = emailTypeSelect.value;
     const customPrompt = customPromptTextarea.value.trim();
-    
+
     // Validate custom prompt if Custom type is selected
     if (emailType === 'Custom' && !customPrompt) {
       showError('Please enter your custom instructions for the email');
       return;
     }
-    
+
     // Get current tab
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
+
     if (!tab.url.includes('linkedin.com/in/')) {
       showError('Please navigate to a LinkedIn profile page first');
       return;
     }
-    
+
     // Show loading with animated Zzz
     startLoadingAnimation();
     emailDisplay.style.display = 'none';
-    
+
     // Extract profile data from content script
     let response;
     try {
       response = await chrome.tabs.sendMessage(tab.id, { action: 'extractProfile' });
     } catch (chromeError) {
       // Check for content script connection error
-      if (chromeError.message && 
-          (chromeError.message.includes('Receiving end does not exist') || 
-           chromeError.message.includes('Could not establish connection'))) {
+      if (chromeError.message &&
+        (chromeError.message.includes('Receiving end does not exist') ||
+          chromeError.message.includes('Could not establish connection'))) {
         throw new Error('CONTENT_SCRIPT_ERROR');
       }
       throw chromeError;
     }
-    
+
     if (!response.success) {
       throw new Error(response.error || 'Failed to extract profile data');
     }
-    
+
     const profileData = response.data.fullText;
-    
+
     if (!profileData || profileData.trim().length < 50) {
       throw new Error('Could not extract enough profile data. Make sure the profile is fully loaded.');
     }
-    
+
     // Get auth token
     const storage = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN]);
     const token = storage[CONFIG.STORAGE_KEYS.TOKEN];
-    
+
     if (!token) {
       throw new Error('Not authenticated');
     }
-    
+
     // Build request body with email type
     const requestBody = {
       linkedInProfileData: profileData,
       emailType: emailType
     };
-    
+
     // Add custom prompt if Custom type is selected
     if (emailType === 'Custom') {
       requestBody.customPrompt = customPrompt;
     }
-    
+
     // Call API to generate email
     const apiResponse = await fetch(`${CONFIG.API_BASE_URL}/email/generate`, {
       method: 'POST',
@@ -426,31 +440,53 @@ async function handleGenerateEmail() {
       },
       body: JSON.stringify(requestBody)
     });
-    
-    if (!apiResponse.ok) {
-      const errorData = await apiResponse.json();
-      throw new Error(errorData.message || 'Failed to generate email');
+
+    // Check for authentication errors (expired token)
+    if (apiResponse.status === 401) {
+      // Token expired or invalid - logout and show friendly message
+      stopLoadingAnimation();
+      await handleLogout();
+      showAuthError('Your session has expired. Please log in again.');
+      return;
     }
-    
-    const emailData = await apiResponse.json();
-    
+
+    if (!apiResponse.ok) {
+      let errorMessage = 'Failed to generate email';
+      try {
+        const errorData = await apiResponse.json();
+        errorMessage = errorData.message || errorMessage;
+      } catch (parseError) {
+        console.error('Error parsing error response:', parseError);
+        // Use default error message if JSON parsing fails
+      }
+      throw new Error(errorMessage);
+    }
+
+    let emailData;
+    try {
+      emailData = await apiResponse.json();
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError);
+      throw new Error('Received invalid response from server. Please try again.');
+    }
+
     // Display the generated email
     displayGeneratedEmail(emailData.generatedEmail);
     showStatus('Email generated successfully!');
-    
+
   } catch (error) {
     console.error('Generate email error:', error);
-    
+
     // Stop loading animation first
     stopLoadingAnimation();
-    
+
     // Show friendly message for content script connection error
     if (error.message === 'CONTENT_SCRIPT_ERROR') {
       showWarning('Please refresh the LinkedIn page and try again');
     } else {
       showError(error.message);
     }
-    
+
     // Make sure button is visible on error
     generateButton.style.display = 'block';
   }
@@ -463,7 +499,7 @@ function displayGeneratedEmail(email) {
   emailContent.textContent = email;
   emailDisplay.style.display = 'block';
   generateButton.style.display = 'none';
-  
+
   // Hide hint message when showing results
   if (hintMessage) {
     hintMessage.style.display = 'none';
@@ -477,7 +513,7 @@ async function handleCopyEmail() {
   try {
     const text = emailContent.textContent;
     await navigator.clipboard.writeText(text);
-    
+
     copyButton.textContent = '✓ Copied!';
     setTimeout(() => {
       copyButton.textContent = 'Copy to Clipboard';
@@ -494,11 +530,11 @@ async function handleCopyEmail() {
 function resetEmailDisplay() {
   emailDisplay.style.display = 'none';
   emailContent.textContent = '';
-  
+
   // Stop any running animation and show button
   stopLoadingAnimation();
   generateButton.style.display = 'block';
-  
+
   // Show hint message again
   if (hintMessage) {
     hintMessage.style.display = 'block';
@@ -508,14 +544,14 @@ function resetEmailDisplay() {
     hintMessage.style.fontWeight = '';
     hintMessage.style.fontStyle = '';
   }
-  
+
   // Reset email type selection
   if (emailTypeSelect) {
     emailTypeSelect.value = 'Default';
     customPromptContainer.style.display = 'none';
     customPromptTextarea.value = '';
   }
-  
+
   hideMessages();
 }
 

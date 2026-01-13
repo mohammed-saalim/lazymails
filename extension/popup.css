@@ -388,6 +388,25 @@ input[type="password"]:focus {
   text-decoration: underline;
 }
 
+.footer-attribution {
+  margin-top: 8px;
+  font-size: 11px;
+  color: #64748b;
+  text-align: center;
+}
+
+.footer-link {
+  color: #6366F1;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.footer-link:hover {
+  color: #4f46e5;
+  text-decoration: underline;
+}
+
 /* Scrollbar Styling */
 .email-content::-webkit-scrollbar {
   width: 6px;
