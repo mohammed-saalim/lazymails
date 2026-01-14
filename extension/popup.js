@@ -608,9 +608,7 @@ function openDashboard(e) {
 function showStatus(message) {
   statusMessage.textContent = message;
   statusMessage.style.display = 'block';
-  setTimeout(() => {
-    statusMessage.style.display = 'none';
-  }, 3000);
+  // Message persists until user generates new email
 }
 
 /**
