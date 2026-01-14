@@ -375,10 +375,6 @@ async function handleGenerateEmail() {
   hideMessages();
 
   try {
-    // Check if guest and within rate limit
-    const withinLimit = await checkGuestLimit();
-    if (!withinLimit) return;
-
     // Get selected email type and custom prompt
     const emailType = emailTypeSelect.value;
     const customPrompt = customPromptTextarea.value.trim();
@@ -505,13 +501,14 @@ async function handleGenerateEmail() {
     // Display the generated email
     displayGeneratedEmail(emailData.generatedEmail);
 
-    // Increment guest counter if applicable (shows remaining count)
-    await incrementGuestCounter();
-
-    // Show success for registered users (guests see remaining count from incrementGuestCounter)
-    const { is_guest: guestMode } = await chrome.storage.local.get('is_guest');
-    if (!guestMode) {
-      showStatus('Email generated successfully!');
+    // Show appropriate message based on user state
+    const { is_guest: isGuestUser } = await chrome.storage.local.get('is_guest');
+    if (isGuestUser) {
+      // Guests: encourage signup for personalization
+      showStatus('✨ Sign up to get more personalized emails!');
+    } else {
+      // Signed-in users: check if they have a profile
+      showStatus('Email generated! Update your profile for more personalized results.');
     }
 
   } catch (error) {

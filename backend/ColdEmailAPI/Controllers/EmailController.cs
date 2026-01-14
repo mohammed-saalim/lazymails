@@ -138,19 +138,9 @@ public class EmailController : ControllerBase
     {
         try
         {
-            // Get client IP address for rate limiting
+            // Log guest request (no rate limiting - unlimited for guests)
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-            var cacheKey = $"guest_{ipAddress}_{DateTime.UtcNow:yyyyMMdd}";
-            
-            // Check rate limit (stored in HttpContext.Items by middleware)
-            if (HttpContext.Items.TryGetValue("GuestRequestCount", out var countObj) && countObj is int count)
-            {
-                if (count >= 5)
-                {
-                    _logger.LogWarning("Guest rate limit exceeded for IP: {IP}", ipAddress);
-                    return StatusCode(429, new { message = "Daily limit of 5 emails reached. Please create an account for unlimited access." });
-                }
-            }
+            _logger.LogInformation("Guest email generation request from IP: {IP}", ipAddress);
 
             // Validate input
             if (string.IsNullOrWhiteSpace(request.LinkedInProfileData))

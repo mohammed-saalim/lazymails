@@ -104,9 +104,6 @@ app.UseHttpsRedirection();
 // Use CORS before authentication
 app.UseCors("AllowExtension");
 
-// Use guest rate limiting middleware
-app.UseGuestRateLimit();
-
 app.UseAuthentication();
 app.UseAuthorization();
 
