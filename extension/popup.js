@@ -355,7 +355,10 @@ async function handleLogout() {
   await chrome.storage.local.remove([
     CONFIG.STORAGE_KEYS.TOKEN,
     CONFIG.STORAGE_KEYS.USER_EMAIL,
-    CONFIG.STORAGE_KEYS.USER_ID
+    CONFIG.STORAGE_KEYS.USER_ID,
+    'is_guest',
+    'guest_count',
+    'guest_reset_date'
   ]);
 
   // Clear user email display
@@ -372,6 +375,10 @@ async function handleGenerateEmail() {
   hideMessages();
 
   try {
+    // Check if guest and within rate limit
+    const withinLimit = await checkGuestLimit();
+    if (!withinLimit) return;
+
     // Get selected email type and custom prompt
     const emailType = emailTypeSelect.value;
     const customPrompt = customPromptTextarea.value.trim();
@@ -418,11 +425,12 @@ async function handleGenerateEmail() {
       throw new Error('Could not extract enough profile data. Make sure the profile is fully loaded.');
     }
 
-    // Get auth token
-    const storage = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN]);
+    // Get auth token and check if guest
+    const storage = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN, 'is_guest']);
     const token = storage[CONFIG.STORAGE_KEYS.TOKEN];
+    const isGuest = storage.is_guest;
 
-    if (!token) {
+    if (!token && !isGuest) {
       throw new Error('Not authenticated');
     }
 
@@ -437,15 +445,33 @@ async function handleGenerateEmail() {
       requestBody.customPrompt = customPrompt;
     }
 
+    // Choose endpoint and headers based on guest mode
+    const endpoint = isGuest
+      ? `${CONFIG.API_BASE_URL}/email/generate/guest`
+      : `${CONFIG.API_BASE_URL}/email/generate`;
+
+    const headers = { 'Content-Type': 'application/json' };
+    if (!isGuest && token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     // Call API to generate email
-    const apiResponse = await fetch(`${CONFIG.API_BASE_URL}/email/generate`, {
+    const apiResponse = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
+      headers: headers,
       body: JSON.stringify(requestBody)
     });
+
+    // Check for rate limit error (guest mode)
+    if (apiResponse.status === 429) {
+      stopLoadingAnimation();
+      const errorData = await apiResponse.json().catch(() => ({}));
+      showError(errorData.message || 'Daily limit of 5 emails reached. Please create an account for unlimited access.');
+      if (isGuest) {
+        setTimeout(() => promptGuestToRegister(), 1500);
+      }
+      return;
+    }
 
     // Check for authentication errors (expired token)
     if (apiResponse.status === 401) {
@@ -478,7 +504,15 @@ async function handleGenerateEmail() {
 
     // Display the generated email
     displayGeneratedEmail(emailData.generatedEmail);
-    showStatus('Email generated successfully!');
+
+    // Increment guest counter if applicable (shows remaining count)
+    await incrementGuestCounter();
+
+    // Show success for registered users (guests see remaining count from incrementGuestCounter)
+    const { is_guest: guestMode } = await chrome.storage.local.get('is_guest');
+    if (!guestMode) {
+      showStatus('Email generated successfully!');
+    }
 
   } catch (error) {
     console.error('Generate email error:', error);
