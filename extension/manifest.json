@@ -5,8 +5,7 @@
   "description": "Personalized outreach, minus the effort",
   "permissions": [
     "activeTab",
-    "storage",
-    "scripting"
+    "storage"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
