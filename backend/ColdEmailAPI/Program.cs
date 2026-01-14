@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ColdEmailAPI.Data;
 using ColdEmailAPI.Services;
+using ColdEmailAPI.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -57,6 +58,9 @@ builder.Services.AddCors(options =>
 // Add HttpClient
 builder.Services.AddHttpClient();
 
+// Add Memory Cache for rate limiting
+builder.Services.AddMemoryCache();
+
 // Add services
 builder.Services.AddScoped<GeminiService>();
 
@@ -99,6 +103,9 @@ app.UseHttpsRedirection();
 
 // Use CORS before authentication
 app.UseCors("AllowExtension");
+
+// Use guest rate limiting middleware
+app.UseGuestRateLimit();
 
 app.UseAuthentication();
 app.UseAuthorization();

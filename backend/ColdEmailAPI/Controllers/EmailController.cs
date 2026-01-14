@@ -126,5 +126,77 @@ public class EmailController : ControllerBase
             return StatusCode(500, new { message = "An error occurred while generating the email" });
         }
     }
+
+    /// <summary>
+    /// Generates an email for guest users (no authentication required, rate limited by IP)
+    /// </summary>
+    /// <param name="request">The request containing LinkedIn profile data</param>
+    /// <returns>The generated cold email</returns>
+    [HttpPost("generate/guest")]
+    [AllowAnonymous]
+    public async Task<ActionResult<GenerateEmailResponse>> GenerateEmailGuest([FromBody] GenerateEmailRequest request)
+    {
+        try
+        {
+            // Get client IP address for rate limiting
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            var cacheKey = $"guest_{ipAddress}_{DateTime.UtcNow:yyyyMMdd}";
+            
+            // Check rate limit (stored in HttpContext.Items by middleware)
+            if (HttpContext.Items.TryGetValue("GuestRequestCount", out var countObj) && countObj is int count)
+            {
+                if (count >= 5)
+                {
+                    _logger.LogWarning("Guest rate limit exceeded for IP: {IP}", ipAddress);
+                    return StatusCode(429, new { message = "Daily limit of 5 emails reached. Please create an account for unlimited access." });
+                }
+            }
+
+            // Validate input
+            if (string.IsNullOrWhiteSpace(request.LinkedInProfileData))
+            {
+                return BadRequest(new { message = "LinkedIn profile data is required" });
+            }
+
+            // Validate LinkedIn data length (prevent abuse)
+            if (request.LinkedInProfileData.Length > 100000) // 100KB limit
+            {
+                return BadRequest(new { message = "LinkedIn profile data too large" });
+            }
+
+            _logger.LogInformation("Guest email generation request from IP: {IP}, EmailType: {EmailType}", ipAddress, request.EmailType);
+
+            // Generate email using Gemini API (no user profile for guests)
+            string generatedEmail;
+            try
+            {
+                generatedEmail = await _geminiService.GenerateColdEmailAsync(
+                    request.LinkedInProfileData,
+                    userProfile: null, // Guests don't have profiles
+                    request.EmailType,
+                    request.CustomPrompt);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating guest email with Gemini API");
+                return StatusCode(500, new { message = "Failed to generate email. Please try again later." });
+            }
+
+            // Don't save to database for guests
+            _logger.LogInformation("Generated guest cold email for IP: {IP}", ipAddress);
+
+            return Ok(new GenerateEmailResponse
+            {
+                Id = 0, // No history ID for guests
+                GeneratedEmail = generatedEmail,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in GenerateEmailGuest endpoint");
+            return StatusCode(500, new { message = "An error occurred while generating the email" });
+        }
+    }
 }
 

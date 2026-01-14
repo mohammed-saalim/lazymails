@@ -13,7 +13,7 @@ let statusMessage, errorMessage, authError;
 let emailDisplay, emailContent;
 let userEmailDisplay, dashboardLink, userActions;
 let emailTypeSelect, customPromptContainer, customPromptTextarea;
-let hintMessage;
+let hintMessage, guestButton;
 
 // Loading animation state
 let zzzAnimationInterval = null;
@@ -72,6 +72,7 @@ async function init() {
   emailTypeSelect = document.getElementById('emailTypeSelect');
   customPromptContainer = document.getElementById('customPromptContainer');
   customPromptTextarea = document.getElementById('customPromptTextarea');
+  guestButton = document.getElementById('guestButton');
 
   // Add event listeners
   loginTab.addEventListener('click', showLoginForm);
@@ -79,6 +80,7 @@ async function init() {
 
   loginButton.addEventListener('click', handleLogin);
   registerButton.addEventListener('click', handleRegister);
+  guestButton.addEventListener('click', handleGuestMode);
   logoutButton.addEventListener('click', handleLogout);
 
   generateButton.addEventListener('click', handleGenerateEmail);
@@ -108,9 +110,13 @@ async function init() {
  */
 async function checkAuthStatus() {
   try {
-    const result = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN, CONFIG.STORAGE_KEYS.USER_EMAIL]);
+    const result = await chrome.storage.local.get([CONFIG.STORAGE_KEYS.TOKEN, CONFIG.STORAGE_KEYS.USER_EMAIL, 'is_guest']);
 
-    if (result[CONFIG.STORAGE_KEYS.TOKEN]) {
+    if (result.is_guest) {
+      // Guest mode
+      showMainSection('Guest');
+    } else if (result[CONFIG.STORAGE_KEYS.TOKEN]) {
+      // Logged in
       showMainSection(result[CONFIG.STORAGE_KEYS.USER_EMAIL]);
     } else {
       showAuthSection();
@@ -622,3 +628,85 @@ function hideMessages() {
   errorMessage.textContent = '';
 }
 
+// ============== GUEST MODE FUNCTIONS ==============
+
+/**
+ * Handle guest mode - allow users to generate emails without an account
+ */
+async function handleGuestMode() {
+  try {
+    await chrome.storage.local.set({
+      is_guest: true,
+      guest_count: 0,
+      guest_reset_date: new Date().toDateString()
+    });
+
+    showMainSection('Guest');
+  } catch (error) {
+    console.error('Guest mode error:', error);
+    showAuthError('Failed to enter guest mode. Please try again.');
+  }
+}
+
+/**
+ * Check and update guest rate limit
+ * @returns {boolean} - Returns true if within limit, false if exceeded
+ */
+async function checkGuestLimit() {
+  const { is_guest, guest_count, guest_reset_date } = await chrome.storage.local.get(['is_guest', 'guest_count', 'guest_reset_date']);
+
+  if (!is_guest) return true; // Not a guest, no limit
+
+  // Check if date needs reset
+  const today = new Date().toDateString();
+  let currentCount = guest_count || 0;
+
+  if (guest_reset_date !== today) {
+    // Reset counter for new day
+    currentCount = 0;
+    await chrome.storage.local.set({
+      guest_count: 0,
+      guest_reset_date: today
+    });
+  }
+
+  // Check guest limit
+  if (currentCount >= 5) {
+    showError('Daily limit of 5 emails reached. Please create an account for unlimited access.');
+    setTimeout(() => promptGuestToRegister(), 1500);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Increment guest counter after successful generation
+ */
+async function incrementGuestCounter() {
+  const { is_guest, guest_count } = await chrome.storage.local.get(['is_guest', 'guest_count']);
+
+  if (is_guest) {
+    const newCount = (guest_count || 0) + 1;
+    await chrome.storage.local.set({ guest_count: newCount });
+
+    // Show remaining count
+    const remaining = 5 - newCount;
+    if (remaining > 0) {
+      showStatus(`✨ ${remaining} email${remaining === 1 ? '' : 's'} remaining today. Create an account for unlimited access!`);
+    } else {
+      showStatus('🎉 You\'ve used all 5 free emails! Create an account for unlimited access.');
+      setTimeout(() => promptGuestToRegister(), 2000);
+    }
+  }
+}
+
+/**
+ * Prompt guest user to create an account
+ */
+function promptGuestToRegister() {
+  if (confirm('Create an account for unlimited email generation and to save your history?')) {
+    showAuthSection();
+    showRegisterForm();
+  }
+}

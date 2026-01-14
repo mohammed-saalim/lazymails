@@ -1,0 +1,20 @@
+/**
+ * Handle guest mode - allow users to generate emails without an account
+ */
+async function handleGuestMode() {
+  try {
+    // Set guest mode in storage
+    await chrome.storage.local.set({ 
+      is_guest: true,
+      guest_count: 0,
+      guest_reset_date: new Date().toDateString()
+    });
+    
+    showMainSection('Guest');
+  } catch (error) {
+    console.error('Guest mode error:', error);
+    showAuthError('Failed to enter guest mode. Please try again.');
+  }
+}
+
+// Add this to popup.js after handleRegister function (around line 284)
